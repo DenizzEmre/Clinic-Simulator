@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clinic Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF2F1; --paper:#F9FBFA; --ink:#15313A; --muted:#566F75; --line:#B7C8C6; --plan:#7FA3A6;
+  --wait:#C57D22; --nurse:#2F6FCF; --doc:#23875A; --proc:#7B4FC0; --staff:#15313A;
+  --ok:#23875A; --warn:#B8741A; --bad:#C0392B; --btn:#15313A; --btnInk:#F9FBFA; --focus:#2F6FCF;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1D21; --paper:#152A2F; --ink:#E3EEEC; --muted:#9DB5B8; --line:#2F4C52; --plan:#5E8D92;
+    --wait:#E0A04A; --nurse:#6EA2F0; --doc:#4CC08A; --proc:#A986E6; --staff:#E3EEEC;
+    --ok:#4CC08A; --warn:#E0A04A; --bad:#F0776A; --btn:#E3EEEC; --btnInk:#0F1D21; --focus:#6EA2F0;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1D21; --paper:#152A2F; --ink:#E3EEEC; --muted:#9DB5B8; --line:#2F4C52; --plan:#5E8D92;
+  --wait:#E0A04A; --nurse:#6EA2F0; --doc:#4CC08A; --proc:#A986E6; --staff:#E3EEEC;
+  --ok:#4CC08A; --warn:#E0A04A; --bad:#F0776A; --btn:#E3EEEC; --btnInk:#0F1D21; --focus:#6EA2F0;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5}
+main{max-width:1180px;margin:0 auto;padding:28px 20px 56px}
+h1{font-size:2rem;line-height:1.15;margin:0 0 6px;letter-spacing:-0.01em}
+h2{font-size:1.25rem;margin:0 0 10px}
+p{margin:0 0 10px;max-width:72ch}
+.lede{color:var(--muted)}
+.layout{display:grid;grid-template-columns:300px 1fr;gap:28px;margin-top:24px;align-items:start}
+.rightcol{min-width:0}
+.rightcol section.results:first-child{margin-top:0}
+.plan-wrap{margin-top:20px}
+@media (max-width:900px){.stack{display:flex;flex-direction:column}.stack .plan-wrap{order:2;margin-top:24px}.stack .layout{order:1;margin-top:16px}main{padding:18px 14px 40px}h1{font-size:1.6rem}}
+@media (max-width:900px){.layout{grid-template-columns:1fr}}
+.controls{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px}
+.group{margin-bottom:16px}
+.group h3{font-size:.95rem;margin:0 0 8px;color:var(--muted);font-weight:700}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0}
+.row label{font-size:.95rem}
+.stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.stepper button{width:32px;height:32px;border:0;background:transparent;color:var(--ink);font-size:1.1rem;cursor:pointer;font-family:inherit}
+.stepper button:hover{background:var(--bg)}
+.stepper output{min-width:34px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--proc)}
+select{font-family:inherit;font-size:.95rem;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font-family:inherit;font-size:.95rem;font-weight:700;border-radius:8px;padding:9px 14px;cursor:pointer;border:1.5px solid var(--btn);background:var(--btn);color:var(--btnInk)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.small{font-size:.85rem;color:var(--muted)}
+.load{margin-top:6px;font-size:.88rem}
+.costline{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2;margin-bottom:4px}
+.costline small{font-size:.85rem;font-weight:400;color:var(--muted)}
+.over{color:var(--bad)}
+.load td{padding:2px 6px 2px 0}
+.load td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.plan-wrap[hidden]{display:none!important}
+.plan-wrap{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px}
+.plan-scroll{overflow-x:auto}
+canvas{display:block;width:100%;min-width:760px;height:auto}
+canvas.vert{min-width:0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.85rem;color:var(--muted);margin-top:8px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:var(--c);vertical-align:-1px}
+.status{font-variant-numeric:tabular-nums;margin-top:6px;font-size:.95rem}
+.watchbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px}
+section.results{margin-top:28px}
+.kpis{display:flex;flex-wrap:wrap;gap:28px;margin:6px 0 14px}
+.kpi b{display:block;font-size:1.7rem;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi span{font-size:.88rem;color:var(--muted)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+table.data{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
+table.data th,table.data td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+table.data th:first-child,table.data td:first-child{text-align:left}
+table.data th{font-weight:700;color:var(--muted);background:var(--bg)}
+table.data tr:last-child td{border-bottom:0}
+.u-hi{color:var(--bad);font-weight:700}.u-mid{color:var(--warn);font-weight:700}
+.bar{display:inline-block;height:8px;border-radius:4px;background:var(--line);width:44px;margin-left:8px;vertical-align:1px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ink)}
+.empty{padding:18px;color:var(--muted)}
+textarea{width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.8rem;margin-top:8px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:8px}
+.del{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1rem;font-family:inherit}
+details{margin-top:28px}
+summary{cursor:pointer;font-weight:700}
+details p{margin-top:8px}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Clinic Simulator</h1>
+
+
+  <div class="stack">
+  <div class="plan-wrap">
+        <div class="plan-scroll"><canvas id="plan" width="980" height="400" role="img" aria-label="Animated floor plan of the clinic showing patients at each station"></canvas></div>
+        <div class="legend">
+          <span style="--c:var(--wait)">Waiting</span>
+          <span style="--c:var(--staff)">With front-desk staff</span>
+          <span style="--c:var(--nurse)">With nurse</span>
+          <span style="--c:var(--doc)">With doctor</span>
+          <span style="--c:var(--proc)">In procedure</span>
+        </div>
+        <div class="watchbar">
+          <button class="btn" id="watchBtn">Watch a day</button>
+          <button class="btn ghost" id="pauseBtn" disabled>Pause</button>
+          <label for="speed" class="small">Speed</label>
+          <select id="speed"><option value="4">4 min per second</option><option value="12" selected>12 min per second</option><option value="40">40 min per second</option><option value="150">150 min per second</option></select>
+        </div>
+        <div class="status" id="status" aria-live="polite">Press "Watch a day" to animate one simulated day with the current settings.</div>
+      </div>
+
+  <div class="layout">
+    <aside class="controls" aria-label="Model settings">
+      <div class="group">
+        <h3>Daily cost</h3>
+        <div class="costline" id="costLine" aria-live="polite"></div>
+        <input type="hidden" id="budget" value="15000">
+        <div class="row"><span>Budget</span><strong>$15,000 per day</strong></div>
+        <p class="small" style="margin:4px 0 0">Per day: check-in or check-out staff $200, nurse $400, doctor $1,200, exam room $300, procedure room $400.</p>
+      </div>
+      <div class="group">
+        <h3>Staff</h3>
+        <div class="row"><label id="l-ci">Check-in staff</label><div class="stepper" data-key="ci"></div></div>
+        <div class="row"><label id="l-co">Check-out staff</label><div class="stepper" data-key="co"></div></div>
+        <div class="row"><label id="l-nurse">Nurses</label><div class="stepper" data-key="nurse"></div></div>
+        <div class="row"><label id="l-doc">Doctors</label><div class="stepper" data-key="doc"></div></div>
+      </div>
+      <div class="group">
+        <h3>Rooms</h3>
+        <div class="row"><label id="l-exam">Exam rooms</label><div class="stepper" data-key="exam"></div></div>
+        <div class="row"><label id="l-proc">Procedure rooms</label><div class="stepper" data-key="proc"></div></div>
+      </div>
+      <div class="group">
+        <h3>Patient mix</h3>
+        <label for="mix" id="mixLabel"></label>
+        <input type="range" id="mix" min="0" max="100" step="5" value="30">
+      </div>
+      <div class="group">
+        <h3>Run settings</h3>
+        <p class="small" style="margin:0">Each run simulates 30 separate 8-hour days (about one month) and averages them. A patient arrives about every 2 minutes. These are the same for every team.</p>
+        <input type="hidden" id="len" value="480"><input type="hidden" id="reps" value="30"><input type="hidden" id="examUnit" value="min"><input type="hidden" id="iat" value="2">
+      </div>
+      <div class="group">
+        <div class="row"><label for="showLoad">Show capacity check</label><input type="checkbox" id="showLoad" checked></div>
+        <table class="load" id="loadTable" aria-live="polite"></table>
+      </div>
+      <div class="btns">
+        <button class="btn" id="runBtn">Run replications</button>
+        <button class="btn ghost" id="baseBtn">Reset to base case</button>
+      </div>
+    </aside>
+    <div class="rightcol">
+  <section class="results" aria-labelledby="resH">
+    <h2 id="resH">Results</h2>
+    <div id="results"><div class="tablewrap"><div class="empty">Run replications to see throughput, time in system, and station statistics averaged over simulated days.</div></div></div>
+  </section>
+
+  <section class="results" aria-labelledby="logH">
+    <h2 id="logH">Experiment log</h2>
+    
+    <div class="btns" style="margin-bottom:10px">
+      <button class="btn" id="copyBtn">Copy for Excel</button>
+      <button class="btn ghost" id="clearBtn">Clear log</button>
+    </div>
+    <div class="tablewrap" id="logWrap"></div>
+    <textarea id="copyBox" rows="5" hidden aria-label="Copy these rows"></textarea>
+  </section>
+
+    </div>
+
+  </div>
+  </div>
+
+  <details>
+    <summary>How the model works</summary>
+    <p>Arrivals are Poisson (exponential time between arrivals, mean 2 minutes by default). Service times are triangular in minutes: check-in (1, 2, 3), vitals and nurse assessment (3, 4, 5), doctor assessment (5, 10, 15), procedure (10, 12.5, 15), check-out (1, 2, 3).</p>
+    <p>The flow follows the Simio file: Check_in, then Waiting_room, where patients wait for a nurse, then Nurse_assessment, then ExamRoom_Dr. A patient waits in the exam room's line for a free room, keeps the room while waiting for a doctor, and sees the doctor there. Patients on Path5 then go to the procedure waiting room, wait in line for a procedure room, and keep the room while waiting for a doctor. Patients on Path6 go straight to check-out. Doctors are one shared pool for exam and procedure rooms, first come, first served.</p>
+    <p>The saved results inside the Simio file show the doctor exam at ExamRoom_Dr averaging about 10 seconds, with a range of about 5 to 14 seconds. That matches Triangular(5, 10, 15) in seconds, while Table 1 of the assignment lists it in minutes. The "Doctor exam time" setting lets you run either version. Seconds reproduces the Simio file.</p>
+    <p>Simio counts a patient who holds a room but is still waiting for the doctor in that room's input buffer. The exam room and procedure room waiting numbers here are counted the same way, so they line up with Simio's InputBuffer columns.</p>
+    <p>The clinic opens empty, admits patients for the full day length, and stops the clock at closing. Throughput counts patients who finished check-out by closing. Time in system and average waits count those patients. When the clinic is overloaded, many patients are still inside at closing, so watch that number alongside time in system. Utilization and average queue lengths are time averages over the day.</p>
+    <p>Each patient's service times and procedure draw come from that patient's own random stream, and replication k uses the same seed in every configuration (common random numbers). This makes differences between configurations reflect the design change more than sampling noise. The ± values are 95% confidence half-widths across replications.</p>
+    <p>The Simio model logic is encoded, so this rebuild is based on the object names, buffers and statistics saved in the file. The default 24-hour day matches the length of Simio's saved run. Travel time on Simio's paths is a few seconds and is left out.</p>
+  </details>
+</main>
+
+<script>
+(function(){
+"use strict";
+// ---------- settings ----------
+const LIMITS={ci:[1,10],co:[1,10],nurse:[1,20],doc:[1,20],exam:[1,30],proc:[1,20]};
+const BASE={ci:1,co:1,nurse:1,doc:1,exam:1,proc:1};
+const cfg={...BASE};
+const $=id=>document.getElementById(id);
+
+document.querySelectorAll('.stepper').forEach(el=>{
+  const k=el.dataset.key;
+  el.innerHTML=`<button type="button" aria-label="Decrease">−</button><output aria-labelledby="l-${k}"></output><button type="button" aria-label="Increase">+</button>`;
+  const [dec,out,inc]=el.children;
+  const set=v=>{cfg[k]=Math.max(LIMITS[k][0],Math.min(LIMITS[k][1],v));out.textContent=cfg[k];onChange();};
+  dec.onclick=()=>set(cfg[k]-1); inc.onclick=()=>set(cfg[k]+1);
+  el._set=set; out.textContent=cfg[k];
+});
+function refreshSteppers(){document.querySelectorAll('.stepper').forEach(el=>el.querySelector('output').textContent=cfg[el.dataset.key]);}
+function pProc(){return (+$('mix').value)/100;}
+const COST={ci:200,co:200,nurse:400,doc:1200,exam:300,proc:400};
+function dayCost(c){return Object.keys(COST).reduce((a,k)=>a+COST[k]*c[k],0);}
+function renderCost(){const b=+$('budget').value,c=dayCost(cfg);const over=b&&c>b;
+  $('costLine').innerHTML=`<span class="${over?'over':''}">$${c.toLocaleString()}</span>`+(b?` <small>${over?'over':'within'} the $${b.toLocaleString()} budget</small>`:'');}
+function examMean(){return $('examUnit').value==='sec'?10/60:10;}
+function onChange(){
+  $('mixLabel').textContent=`${$('mix').value}% need a procedure, ${100-$('mix').value}% do not`;
+  renderLoad();renderCost();
+  if(!anim.running&&!anim.paused) drawIdle();
+}
+$('mix').oninput=onChange; $('iat').onchange=onChange; $('examUnit').onchange=onChange; $('showLoad').onchange=renderLoad;
+$('baseBtn').onclick=()=>{Object.assign(cfg,BASE);$('mix').value=30;$('iat').value='2';refreshSteppers();onChange();};
+
+function renderLoad(){
+  const t=$('loadTable');
+  if(!$('showLoad').checked){t.innerHTML='';return;}
+  const lam=1/(+$('iat').value), p=pProc();
+  const rows=[
+    ['Check-in staff',lam*2/cfg.ci],
+    ['Nurses',lam*4/cfg.nurse],
+    ['Doctors',lam*(examMean()+p*12.5)/cfg.doc],
+    ['Exam rooms (at least)',lam*examMean()/cfg.exam],
+    ['Procedure rooms',lam*p*12.5/cfg.proc],
+    ['Check-out staff',lam*2/cfg.co]];
+  t.innerHTML=`<tr><td colspan="2" class="small">Offered load: average work arriving per unit of capacity. Above 100% the queue keeps growing.</td></tr>`+
+    rows.map(([n,v])=>{const c=v>=1?'u-hi':v>=.85?'u-mid':'';return `<tr><td>${n}</td><td class="num ${c}">${Math.round(v*100)}%</td></tr>`}).join('');
+}
+
+// ---------- random numbers ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function tri(u,a,m,b){const F=(m-a)/(b-a);return u<F?a+Math.sqrt(u*(b-a)*(m-a)):b-Math.sqrt((1-u)*(b-a)*(b-m));}
+function expo(u,mean){return -mean*Math.log(1-u);}
+
+// ---------- event engine ----------
+class Heap{
+  constructor(){this.a=[];}
+  get size(){return this.a.length;}
+  peek(){return this.a[0];}
+  less(i,j){const x=this.a[i],y=this.a[j];return x.t<y.t||(x.t===y.t&&x.s<y.s);}
+  push(e){const a=this.a;a.push(e);let i=a.length-1;while(i>0){const p=(i-1)>>1;if(this.less(i,p)){[a[i],a[p]]=[a[p],a[i]];i=p;}else break;}}
+  pop(){const a=this.a,top=a[0],last=a.pop();if(a.length){a[0]=last;let i=0;for(;;){const l=2*i+1,r=l+1;let m=i;if(l<a.length&&this.less(l,m))m=l;if(r<a.length&&this.less(r,m))m=r;if(m===i)break;[a[i],a[m]]=[a[m],a[i]];i=m;}}return top;}
+}
+class TimeAvg{
+  constructor(sim){this.sim=sim;this.v=0;this.area=0;this.last=0;}
+  add(d){const t=this.sim.t;this.area+=this.v*(t-this.last);this.last=t;this.v+=d;}
+  close(T){this.area+=this.v*(T-this.last);this.last=T;return this.area/T;}
+}
+class Res{
+  constructor(sim,cap){this.sim=sim;this.cap=cap;this.busy=0;this.q=[];this.last=0;this.busyArea=0;this.qArea=0;}
+  upd(){const t=this.sim.t,dt=t-this.last;this.busyArea+=this.busy*dt;this.qArea+=this.q.length*dt;this.last=t;}
+  request(p,key,cb){this.upd();if(this.busy<this.cap){this.busy++;this.sim.wait(key,0);cb();}else this.q.push({p,key,cb,t:this.sim.t});}
+  release(){this.upd();if(this.q.length){const x=this.q.shift();this.sim.wait(x.key,this.sim.t-x.t);x.cb();}else this.busy--;}
+}
+class Sim{
+  constructor(c,seed){
+    this.c=c;this.t=0;this.h=new Heap();this.seq=0;
+    this.rArr=mulberry32(seed*7919+1);this.rAtt=mulberry32(seed*104729+17);
+    this.R={ci:new Res(this,c.ci),nurse:new Res(this,c.nurse),doc:new Res(this,c.doc),exam:new Res(this,c.exam),proc:new Res(this,c.proc),co:new Res(this,c.co)};
+    this.examOcc=new Set();this.procOcc=new Set();this.nurseOcc=new Set();
+    this.exWaitDoc=new TimeAvg(this);this.prWaitDoc=new TimeAvg(this); // holding a room, waiting for a doctor (Simio counts these in the input buffer)
+    this.W={};this.done=0;this.tisSum=0;this.inSys=0;this.nid=0;this.arrivals=0;
+    this.at(expo(this.rArr(),c.iat),()=>this.arrive());
+  }
+  at(dt,fn){this.h.push({t:this.t+dt,s:this.seq++,fn});}
+  wait(k,w){if(this.t>this.c.T)return;const o=this.W[k]||(this.W[k]={s:0,n:0});o.s+=w;o.n++;}
+  runUntil(T){const lim=Math.min(T,this.c.T);while(this.h.size&&this.h.peek().t<=lim){const e=this.h.pop();this.t=e.t;e.fn();}this.t=lim;}
+  arrive(){
+    if(this.t>this.c.T)return;
+    const r=this.rAtt;
+    const p={id:++this.nid,tA:this.t,u:[r(),r(),r(),r(),r(),r()],st:''};
+    p.needProc=p.u[5]<this.c.p;
+    this.inSys++;this.arrivals++;
+    this.R.ci.request(p,'ci',()=>this.at(tri(p.u[0],1,2,3),()=>{this.R.ci.release();this.toNurse(p);}));
+    this.at(expo(this.rArr(),this.c.iat),()=>this.arrive());
+  }
+  toNurse(p){
+    // Waiting_room: patients wait here until a nurse is free (Simio: Waiting_room output buffer)
+    this.R.nurse.request(p,'nurse',()=>{
+      this.nurseOcc.add(p);p.st='N';
+      this.at(tri(p.u[1],3,4,5),()=>{this.R.nurse.release();this.nurseOcc.delete(p);this.toExam(p);});
+    });
+  }
+  toExam(p){
+    // ExamRoom_Dr: wait in the input buffer for a room, then hold the room while waiting for and seeing a doctor
+    this.R.exam.request(p,'exam',()=>{
+      this.examOcc.add(p);p.st='wD';this.exWaitDoc.add(1);
+      this.R.doc.request(p,'docExam',()=>{
+        p.st='D';this.exWaitDoc.add(-1);
+        this.at(tri(p.u[2],5,10,15)*this.c.examScale,()=>{
+          this.R.doc.release();this.examOcc.delete(p);this.R.exam.release();
+          if(p.needProc)this.toProc(p);else this.toCheckout(p);
+        });
+      });
+    });
+  }
+  toProc(p){
+    this.R.proc.request(p,'proc',()=>{
+      this.procOcc.add(p);p.st='wD';this.prWaitDoc.add(1);
+      this.R.doc.request(p,'docProc',()=>{
+        p.st='P';this.prWaitDoc.add(-1);
+        this.at(tri(p.u[3],10,12.5,15),()=>{this.R.doc.release();this.procOcc.delete(p);this.R.proc.release();this.toCheckout(p);});
+      });
+    });
+  }
+  toCheckout(p){
+    this.R.co.request(p,'co',()=>this.at(tri(p.u[4],1,2,3),()=>{
+      this.R.co.release();this.inSys--;
+      if(this.t<=this.c.T){this.done++;this.tisSum+=this.t-p.tA;}
+    }));
+  }
+  finish(){
+    const T=this.c.T,R=this.R,o={};
+    for(const k in R){R[k].upd();o['u_'+k]=R[k].busyArea/(R[k].cap*T);o['q_'+k]=R[k].qArea/T;}
+    o.ib_exam=o.q_exam+this.exWaitDoc.close(T);o.ib_proc=o.q_proc+this.prWaitDoc.close(T);
+    o.thr=this.done;o.tis=this.done?this.tisSum/this.done:NaN;o.wip=this.inSys;
+    for(const k of ['ci','exam','nurse','docExam','proc','docProc','co']){const w=this.W[k];o['w_'+k]=w&&w.n?w.s/w.n:0;}
+    return o;
+  }
+}
+function currentCfg(){return {...cfg,p:pProc(),iat:+$('iat').value,T:+$('len').value,examScale:$('examUnit').value==='sec'?1/60:1};}
+
+// ---------- replications ----------
+const TT=[0,12.71,4.30,3.18,2.78,2.57,2.45,2.36,2.31,2.26,2.23,2.20,2.18,2.16,2.14,2.13,2.12,2.11,2.10,2.09,2.09,2.08,2.07,2.07,2.06,2.06,2.06,2.05,2.05,2.05,2.04];
+function summarize(arr){
+  const n=arr.length,m=arr.reduce((a,b)=>a+b,0)/n;
+  if(n<2)return{m,h:0};
+  const v=arr.reduce((a,b)=>a+(b-m)**2,0)/(n-1);
+  return{m,h:(TT[n-1]||1.96)*Math.sqrt(v/n)};
+}
+function runReps(){
+  const c=currentCfg(),n=+$('reps').value,outs=[];
+  for(let i=1;i<=n;i++){const s=new Sim(c,i);s.runUntil(c.T);outs.push(s.finish());}
+  const S={};for(const k in outs[0])S[k]=summarize(outs.map(o=>o[k]).filter(x=>!Number.isNaN(x)));
+  return{c,n,S};
+}
+const f1=x=>Number.isFinite(x)?x.toFixed(1):'–', f2=x=>Number.isFinite(x)?x.toFixed(2):'–', pct=x=>Number.isFinite(x)?Math.round(x*100)+'%':'–';
+function utilCell(u){const c=u.m>=.9?'u-hi':u.m>=.75?'u-mid':'';return `<span class="${c}">${pct(u.m)}</span><span class="bar" aria-hidden="true"><i style="width:${Math.min(100,u.m*100)}%"></i></span>`;}
+function showResults(r){
+  const {c,n,S}=r;
+  const rows=[
+    ['Check-in desk',c.ci,S.u_ci,S.q_ci,S.w_ci],
+    ['Waiting room (for nurse)','',null,S.q_nurse,S.w_nurse],
+    ['Nurses',c.nurse,S.u_nurse,null,null],
+    ['Exam rooms',c.exam,S.u_exam,S.ib_exam,{m:S.w_exam.m+S.w_docExam.m}],
+    ['Doctors',c.doc,S.u_doc,S.q_doc,null],
+    ['  Doctor wait in exam room','',null,null,S.w_docExam],
+    ['  Doctor wait in procedure room','',null,null,S.w_docProc],
+    ['Procedure rooms',c.proc,S.u_proc,S.ib_proc,{m:S.w_proc.m+S.w_docProc.m}],
+    ['Check-out desk',c.co,S.u_co,S.q_co,S.w_co]];
+  $('results').innerHTML=`
+  <div class="kpis">
+    <div class="kpi"><b>${f1(S.thr.m)}</b><span>patients finished per day ± ${f1(S.thr.h)}</span></div>
+    <div class="kpi"><b>${f1(S.tis.m)} min</b><span>average time in system ± ${f1(S.tis.h)} (${f2(S.tis.m/60)} h)</span></div>
+    <div class="kpi"><b>${f1(S.wip.m)}</b><span>patients still inside at closing</span></div>
+    <div class="kpi"><b>$${dayCost(c).toLocaleString()}</b><span>daily cost</span></div>
+  </div>
+  <p class="small">${n} replications of a ${c.T/60}-hour day. Check-in/out staff ${c.ci}/${c.co}, nurses ${c.nurse}, doctors ${c.doc}, exam rooms ${c.exam}, procedure rooms ${c.proc}, ${Math.round(c.p*100)}% procedure patients, doctor exam time in ${c.examScale===1?'minutes':'seconds'}.</p>
+  <div class="tablewrap"><table class="data">
+    <thead><tr><th>Station</th><th>Capacity</th><th>Utilization</th><th>Avg waiting</th><th>Avg wait (min)</th></tr></thead>
+    <tbody>${rows.map(([name,cap,u,q,w])=>`<tr><td>${name.replace(/^  /,'&emsp;')}</td><td>${cap}</td><td>${u?utilCell(u):''}</td><td>${q?f2(q.m):''}</td><td>${w?f1(w.m):''}</td></tr>`).join('')}</tbody>
+  </table></div>
+  <p class="small" style="margin-top:8px">Avg waiting is the time-average number of patients waiting, counted like Simio's buffers. For exam and procedure rooms it includes patients who hold a room while waiting for a doctor.</p>`;
+}
+
+// ---------- experiment log ----------
+let log=[];
+try{log=JSON.parse(localStorage.getItem('clinicLog')||'[]')||[];}catch(e){log=[];}
+function saveLog(){try{localStorage.setItem('clinicLog',JSON.stringify(log));}catch(e){}}
+function renderLog(){
+  const w=$('logWrap');
+  if(!log.length){w.innerHTML='<div class="empty">No runs logged yet. Start with the base case, then change one or two settings at a time.</div>';return;}
+  w.innerHTML=`<table class="data"><thead><tr><th>Run</th><th>In/Out</th><th>Nurses</th><th>Doctors</th><th>Exam</th><th>Proc</th><th>Proc %</th><th>Throughput</th><th>Time in sys</th><th>Still inside</th><th>Cost</th><th>Exam time</th><th>Doctor util</th><th>Exam util</th><th>Waiting room</th><th></th></tr></thead><tbody>${
+    log.map((r,i)=>`<tr><td>${i+1}</td><td>${r.ci}/${r.co}</td><td>${r.nurse}</td><td>${r.doc}</td><td>${r.exam}</td><td>${r.proc}</td><td>${Math.round(r.p*100)}%</td><td>${f1(r.thr)}</td><td>${f1(r.tis)}</td><td>${f1(r.wip)}</td><td>$${dayCost(r).toLocaleString()}</td><td>${r.examScale===1?'min':'sec'}</td><td>${pct(r.u_doc)}</td><td>${pct(r.u_exam)}</td><td>${f2(r.q_nurse)}</td><td><button class="del" aria-label="Delete run ${i+1}" data-i="${i}">×</button></td></tr>`).join('')
+  }</tbody></table>`;
+  w.querySelectorAll('.del').forEach(b=>b.onclick=()=>{log.splice(+b.dataset.i,1);saveLog();renderLog();});
+}
+function addLog(r){
+  const {c,S}=r,e={...c};for(const k in S)e[k]=S[k].m;log.push(e);saveLog();renderLog();
+}
+function tsv(){
+  // Columns C..W of Hwk3_Experimental_Results.xlsx, in Simio's units: time in system in hours, utilization in percent
+  const u=x=>(x*100).toFixed(2), q=x=>x.toFixed(3);
+  return log.map(r=>[r.ci,r.co,r.nurse,r.doc,r.exam,r.proc,(+r.p).toFixed(2),(1-r.p).toFixed(2),
+    r.thr.toFixed(1),(r.tis/60).toFixed(4),u(r.u_ci),q(r.q_ci),q(r.q_nurse),u(r.u_nurse),u(r.u_doc),
+    u(r.u_exam),q(r.ib_exam??r.q_exam),u(r.u_proc),q(r.ib_proc??r.q_proc),u(r.u_co),q(r.q_co)].join('\t')).join('\n');
+}
+$('copyBtn').onclick=async()=>{
+  if(!log.length)return;
+  const txt=tsv(),box=$('copyBox');
+  try{await navigator.clipboard.writeText(txt);$('copyBtn').textContent='Copied';setTimeout(()=>$('copyBtn').textContent='Copy for Excel',1500);box.hidden=true;}
+  catch(e){box.hidden=false;box.value=txt;box.focus();box.select();}
+};
+let clearArmed=null;
+$('clearBtn').onclick=()=>{
+  if(!log.length)return;
+  if(!clearArmed){$('clearBtn').textContent='Click again to clear';clearArmed=setTimeout(()=>{clearArmed=null;$('clearBtn').textContent='Clear log';},4000);return;}
+  clearTimeout(clearArmed);clearArmed=null;log=[];saveLog();renderLog();$('copyBox').hidden=true;$('clearBtn').textContent='Clear log';
+};
+$('runBtn').onclick=()=>{
+  $('runBtn').disabled=true;$('runBtn').textContent='Running…';
+  setTimeout(()=>{const r=runReps();showResults(r);addLog(r);if(window.innerWidth<900)try{$('resH').scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}$('runBtn').disabled=false;$('runBtn').textContent='Run replications';},20);
+};
+
+// ---------- floor plan animation ----------
+const cv=$('plan'),ctx=cv.getContext('2d');
+let LW=980,LH=400,VERT=false;
+function setupCanvas(){const dpr=window.devicePixelRatio||1;cv.width=LW*dpr;cv.height=LH*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
+function layoutMode(){const v=cv.parentElement.clientWidth<640;if(v!==VERT||!cv._init){VERT=v;cv._init=true;LW=v?380:980;LH=v?720:400;cv.classList.toggle('vert',v);setupCanvas();}}
+layoutMode();
+function col(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function room(x,y,w,h,label,sub){
+  ctx.strokeStyle=col('--plan');ctx.lineWidth=2;
+  // walls with a door gap on the left wall
+  ctx.beginPath();ctx.moveTo(x,y+h*0.35);ctx.lineTo(x,y);ctx.lineTo(x+w,y);ctx.lineTo(x+w,y+h);ctx.lineTo(x,y+h);ctx.lineTo(x,y+h*0.65);ctx.stroke();
+  ctx.fillStyle=col('--ink');ctx.font='700 13px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText(label,x+8,y+18);
+  if(sub){ctx.fillStyle=col('--muted');ctx.font='12px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText(sub,x+8,y+33);}
+}
+function dot(x,y,c,r=4.5){ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+function dots(n,x,y,w,rows,c){
+  const step=11,cols=Math.max(1,Math.floor(w/step)),max=cols*rows;
+  const show=n>max?max-1:n;
+  for(let i=0;i<show;i++)dot(x+(i%cols)*step+5,y+Math.floor(i/cols)*step+5,c,4);
+  if(n>max){ctx.fillStyle=col('--ink');ctx.font='700 11px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText('+'+(n-show),x+((show)%cols)*step,y+Math.floor(show/cols)*step+9);}
+}
+function slots(cap,states,x,y,w,colors){
+  const sz=22,gap=6,cols=Math.max(1,Math.floor((w+gap)/(sz+gap)));
+  for(let i=0;i<cap;i++){
+    const sx=x+(i%cols)*(sz+gap),sy=y+Math.floor(i/cols)*(sz+gap);
+    ctx.strokeStyle=col('--line');ctx.lineWidth=1.5;ctx.strokeRect(sx,sy,sz,sz);
+    if(i<states.length)dot(sx+sz/2,sy+sz/2,colors[states[i]]||col('--staff'),6);
+  }
+}
+function arrow(x1,y1,x2,y2){
+  ctx.strokeStyle=col('--line');ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([]);
+  const a=Math.atan2(y2-y1,x2-x1);ctx.fillStyle=col('--line');ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-8*Math.cos(a-0.4),y2-8*Math.sin(a-0.4));ctx.lineTo(x2-8*Math.cos(a+0.4),y2-8*Math.sin(a+0.4));ctx.fill();
+}
+function staffRow(label,busy,cap,x,y,c){
+  ctx.fillStyle=col('--ink');ctx.font='700 13px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText(label,x,y+4);
+  const x0=x+72;
+  for(let i=0;i<cap;i++){const cx=x0+i*16;ctx.strokeStyle=c;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,y,5.5,0,Math.PI*2);ctx.stroke();if(i<busy)dot(cx,y,c,5.5);}
+  ctx.fillStyle=col('--muted');ctx.font='12px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText(`${busy} of ${cap} busy`,x0+cap*16+4,y+4);
+}
+function lineLabel(x,y){ctx.fillStyle=col('--muted');ctx.font='12px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText('line',x,y);}
+function draw(s){if(VERT)return drawV(s);return drawH(s);}
+function drawH(s){
+  const c=s?s.c:{...currentCfg()};
+  const R=s?s.R:null;
+  ctx.clearRect(0,0,LW,LH);
+  const C={wD:col('--wait'),D:col('--doc'),P:col('--proc'),N:col('--nurse')};
+  const occ=set=>s?[...set].sort((a,b)=>a.id-b.id).map(p=>p.st):[];
+  // Check-in
+  room(15,30,115,150,'Check-in','desk');
+  slots(c.ci,Array(R?R.ci.busy:0).fill('S'),25,72,95,{S:col('--staff')});
+  lineLabel(25,128);dots(R?R.ci.q.length:0,25,134,95,4,col('--wait'));
+  arrow(132,105,150,105);
+  // Waiting room (queue for a nurse)
+  room(152,30,150,150,'Waiting room','for a nurse');
+  dots(R?R.nurse.q.length:0,162,70,130,9,col('--wait'));
+  arrow(304,105,322,105);
+  // Nurse station
+  room(324,30,120,150,'Nurse','vitals and exam');
+  slots(c.nurse,occ(s?s.nurseOcc:[]),334,72,100,C);
+  arrow(446,105,464,105);
+  // Exam rooms with their own line
+  room(466,30,200,150,'Exam rooms',`${c.exam} room${c.exam>1?'s':''}, with doctor`);
+  slots(c.exam,occ(s?s.examOcc:[]),476,72,180,C);
+  lineLabel(476,128);dots(R?R.exam.q.length:0,476,134,180,4,col('--wait'));
+  // Procedure rooms
+  arrow(566,182,566,226);
+  room(466,228,200,150,'Procedure rooms',`${c.proc} room${c.proc>1?'s':''}, ${Math.round(c.p*100)}% of patients`);
+  slots(c.proc,occ(s?s.procOcc:[]),476,270,180,C);
+  lineLabel(476,326);dots(R?R.proc.q.length:0,476,332,180,4,col('--wait'));
+  // Check-out
+  arrow(668,105,686,105);arrow(668,300,712,182);
+  room(688,30,120,150,'Check-out','desk');
+  slots(c.co,Array(R?R.co.busy:0).fill('S'),698,72,100,{S:col('--staff')});
+  lineLabel(698,128);dots(R?R.co.q.length:0,698,134,100,4,col('--wait'));
+  arrow(810,105,830,105);
+  ctx.fillStyle=col('--ink');ctx.font='700 13px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText('Exit',836,100);
+  ctx.font='700 26px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText(String(s?s.done:0),836,130);
+  ctx.fillStyle=col('--muted');ctx.font='12px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText('patients done',836,148);
+  // Doctors pool
+  staffRow('Doctors',R?R.doc.busy:0,c.doc,15,250,col('--doc'));
+  ctx.fillStyle=col('--muted');ctx.font='12px "Atkinson Hyperlegible",system-ui,sans-serif';
+  ctx.fillText('Shared by exam and procedure rooms.',15,275);
+  ctx.fillText('Patients waiting on a doctor: '+(R?R.doc.q.length:0),15,295);
+  // clock
+  const t=s?s.t:0,h=Math.floor(t/60),m=Math.floor(t%60);
+  ctx.fillStyle=col('--ink');ctx.font='700 13px "Atkinson Hyperlegible",system-ui,sans-serif';
+  ctx.fillText(`Clock ${h}:${String(m).padStart(2,'0')} of ${c.T/60}:00`,700,240);
+  ctx.fillStyle=col('--line');ctx.fillRect(700,250,220,6);ctx.fillStyle=col('--ink');ctx.fillRect(700,250,220*Math.min(1,t/c.T),6);
+  ctx.fillStyle=col('--muted');ctx.font='12px "Atkinson Hyperlegible",system-ui,sans-serif';
+  ctx.fillText(`Arrived ${s?s.arrivals:0}   Inside now ${s?s.inSys:0}`,700,278);
+}
+function drawV(s){
+  const c=s?s.c:{...currentCfg()},R=s?s.R:null;
+  ctx.clearRect(0,0,LW,LH);
+  const C={wD:col('--wait'),D:col('--doc'),P:col('--proc'),N:col('--nurse')};
+  const occ=set=>s?[...set].sort((a,b)=>a.id-b.id).map(p=>p.st):[];
+  let y=6;
+  const row=(h,label,sub)=>{ctx.strokeStyle=col('--line');ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(8,y);ctx.lineTo(LW-8,y);ctx.stroke();
+    ctx.fillStyle=col('--ink');ctx.font='700 13px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText(label,10,y+20);
+    if(sub){ctx.fillStyle=col('--muted');ctx.font='11px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText(sub,10,y+36);}
+    const y0=y;y+=h;return y0;};
+  const X=124,W=LW-X-10;
+  const lab=(t,yy)=>{ctx.fillStyle=col('--muted');ctx.font='11px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText(t,10,yy);};
+  let y0=row(80,'Check-in',c.ci+' staff');
+  slots(c.ci,Array(R?R.ci.busy:0).fill('S'),X,y0+8,W,{S:col('--staff')});lab('line',y0+56);dots(R?R.ci.q.length:0,X,y0+44,W,3,col('--wait'));
+  y0=row(90,'Waiting room','for a nurse');dots(R?R.nurse.q.length:0,X,y0+8,W,7,col('--wait'));
+  y0=row(70,'Nurse',c.nurse+' nurse'+(c.nurse>1?'s':''));slots(c.nurse,occ(s?s.nurseOcc:[]),X,y0+8,W,C);
+  y0=row(140,'Exam',c.exam+' room'+(c.exam>1?'s':''));slots(c.exam,occ(s?s.examOcc:[]),X,y0+8,W,C);
+  lab('line',y0+104);dots(R?R.exam.q.length:0,X,y0+94,W,4,col('--wait'));
+  y0=row(110,'Procedure',c.proc+' room'+(c.proc>1?'s':'')+', '+Math.round(c.p*100)+'% of pts');slots(c.proc,occ(s?s.procOcc:[]),X,y0+8,W,C);
+  lab('line',y0+80);dots(R?R.proc.q.length:0,X,y0+70,W,3,col('--wait'));
+  y0=row(80,'Check-out',c.co+' staff');slots(c.co,Array(R?R.co.busy:0).fill('S'),X,y0+8,W,{S:col('--staff')});lab('line',y0+56);dots(R?R.co.q.length:0,X,y0+44,W,3,col('--wait'));
+  y0=row(50,'Doctors',(R?R.doc.busy:0)+' of '+c.doc+' busy');
+  for(let i=0;i<Math.min(c.doc,14);i++){const cx=X+8+i*16;ctx.strokeStyle=col('--doc');ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,y0+20,5.5,0,Math.PI*2);ctx.stroke();if(R&&i<R.doc.busy)dot(cx,y0+20,col('--doc'),5.5);}
+  y0=row(90,'Clock',null);
+  const t=s?s.t:0,h=Math.floor(t/60),m=Math.floor(t%60);
+  ctx.fillStyle=col('--ink');ctx.font='700 13px "Atkinson Hyperlegible",system-ui,sans-serif';ctx.fillText(h+':'+String(m).padStart(2,'0')+' of '+(c.T/60)+':00',X,y0+20);
+  ctx.fillStyle=col('--line');ctx.fillRect(X,y0+30,W,6);ctx.fillStyle=col('--ink');ctx.fillRect(X,y0+30,W*Math.min(1,t/c.T),6);
+  ctx.fillStyle=col('--muted');ctx.font='12px "Atkinson Hyperlegible",system-ui,sans-serif';
+  ctx.fillText('Arrived '+(s?s.arrivals:0)+'   Inside '+(s?s.inSys:0)+'   Done '+(s?s.done:0),X,y0+58);
+}
+function drawIdle(){draw(null);}
+const anim={sim:null,running:false,paused:false,last:0};
+function frame(ts){
+  if(!anim.running)return;
+  const dt=Math.min(0.1,(ts-anim.last)/1000);anim.last=ts;
+  const s=anim.sim;
+  s.runUntil(s.t+dt*(+$('speed').value));
+  draw(s);
+  const h=Math.floor(s.t/60),m=Math.floor(s.t%60);
+  $('status').textContent=`Hour ${h}:${String(m).padStart(2,'0')}. ${s.done} patients finished, ${s.inSys} inside the clinic.`;
+  if(s.t>=s.c.T){
+    anim.running=false;anim.paused=false;$('pauseBtn').disabled=true;$('pauseBtn').textContent='Pause';$('watchBtn').textContent='Watch a day';
+    const o=s.finish();
+    $('status').textContent=`Day over. ${o.thr} patients finished, average time in system ${f1(o.tis)} min, ${o.wip} still inside at closing. Doctor utilization ${pct(o.u_doc)}, exam room utilization ${pct(o.u_exam)}.`;
+    return;
+  }
+  requestAnimationFrame(frame);
+}
+$('watchBtn').onclick=()=>{
+  anim.sim=new Sim(currentCfg(),1+Math.floor(Math.random()*100000));
+  anim.running=true;anim.paused=false;anim.last=performance.now();
+  $('pauseBtn').disabled=false;$('pauseBtn').textContent='Pause';$('watchBtn').textContent='Restart day';
+  requestAnimationFrame(frame);
+};
+$('pauseBtn').onclick=()=>{
+  if(anim.running){anim.running=false;anim.paused=true;$('pauseBtn').textContent='Resume';}
+  else if(anim.paused){anim.running=true;anim.paused=false;anim.last=performance.now();$('pauseBtn').textContent='Pause';requestAnimationFrame(frame);}
+};
+window.addEventListener('resize',()=>{const was=VERT;layoutMode();if(was!==VERT)draw(anim.sim&&(anim.running||anim.paused)?anim.sim:null);});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{draw(anim.sim&&(anim.running||anim.paused)?anim.sim:null);});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(!anim.running)drawIdle();});
+
+onChange();renderLog();drawIdle();
+})();
+</script>
+</body>
+</html>
